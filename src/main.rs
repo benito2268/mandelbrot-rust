@@ -1,3 +1,7 @@
+use std::fs::File;
+use std::io::{self, Read, Write};
+use std::path::Path;
+
 // translate screen coords to points in the complex plane
 fn px2complex(px: usize, py: usize, w: usize, h: usize) -> (f64, f64) {
     let x_min = -2.5;
@@ -18,7 +22,7 @@ fn mandelbrot(cx: f64, cy: f64, maxIter: u32) -> u32 {
 
     while x*x + y*y <= 4.0 && iter < maxIter {
         let xt = x*x - y*y + cx;
-        y = 2.0*x*y _ cy;
+        y = 2.0*x*y - cy;
         x = xt;
         iter += 1;
     }
@@ -46,10 +50,39 @@ fn mandelDumb(w: usize, h: usize, maxIter: u32) -> Vec<Vec<u8>> {
         let row = computeRow(y, w, h, maxIter);
         image.push(row);
     }
-
     image
 }
 
+// write the fractal out to a PGM greyscale image file
+fn genPgmImage(image: &Vec<Vec<u8>>, w: usize, h: usize) -> io::Result<()> {
+    let path = Path::new("mandelbrot.pgm");
+    let mut file = File::create(&path)?;
+
+    // write the file header
+    file.write_all("P2\n".as_bytes())?;
+    file.write_all(format!("{0} {1}\n255\n", w, h).as_bytes())?;
+
+    //write the image data in ASCII
+    for row in image {
+        for px in row {
+            write!(file, "{:03} ", *px)?;
+        }
+        write!(file, "\n")?;
+    }
+
+    Ok(())
+}
+
 fn main() {
-    println!("Hello, world!");
+    let w= 1920;
+    let h = 1080;
+
+    let image = mandelDumb(w,h, 1000 );
+
+    match genPgmImage(&image, w, h) {
+        Ok(_) => (),
+        Err(e) => {
+            println!("Error: failed to generate PGM {}", e);
+        }
+    }
 }
